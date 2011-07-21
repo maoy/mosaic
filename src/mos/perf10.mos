@@ -1,0 +1,38 @@
+//join a table 10 times just to test performance
+table< <string,int64_t,PosixTime>, keys<0> > beginTime;
+event< int64_t > num;
+
+beginTime("start", 0, PosixTime::now() );
+
+on periodic(1,1,0) => num(0);
+/*on num(I), 
+  beginTime(x ,y ,z),
+  beginTime(x,y,z),
+  beginTime(x,y,z),
+  beginTime(x,y,z),
+  beginTime(x,y,z),
+  beginTime(x,y,z),
+  beginTime(x,y,z),
+  beginTime(x,y,z),
+  beginTime(x,y,z),
+  beginTime(x,y,z),
+  I<= 10000000L 
+      => num(I+1);
+*/
+on num(I), 
+  beginTime(x ,_,_),
+  beginTime(x,_,_),
+  beginTime(x,_,_),
+  beginTime(x,_,_),
+  beginTime(x,_,_),
+  beginTime(x,_,_),
+  beginTime(x,_,_),
+  beginTime(x,_,_),
+  beginTime(x,_,_),
+  beginTime(x,_,_),
+  I<= 10000000L 
+      => num(I+1);
+
+on num(I), I==10000000L, beginTime(_,_,t) => 
+  print("counted to",I, PosixTime::now()-t);
+

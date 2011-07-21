@@ -1,0 +1,59 @@
+const UDPAddress server = ::UDPAddress("127.0.0.1",1234);
+//node membership maintainance
+module membership {
+  //input: server
+  //output: link
+  table< <Me:UDPAddress, NodeAddr:UDPAddress>,keys<Me,NodeAddr>, 15 > nodelist;
+  on periodic(10) => insert nodelist(@server, ::myAddr);
+  event<UDPAddress, UDPAddress,UDPAddress, int> newlink;
+  on insert nodelist(@Server, New), nodelist(@Server,Exists)
+    , New != Exists, C=::rand()%1000
+    => newlink(@Server, New, Exists, C);
+  table< <Src:UDPAddress,Dest:UDPAddress, Cost:int>, keys<Src,Dest> > link;
+  on newlink(_,N,E,C) => insert link(@E,N,C);
+  on newlink(_,N,E,C) => insert link(@N,E,C);
+  event<UDPAddress, UDPAddress> deadNotice;
+  on delete nodelist(@Server, Dead), nodelist(@Server,Exists), Exists!=Dead
+    => deadNotice(@Exists, Dead);
+  on deadNotice(@N, D), link(@N, D, C) => delete link(@N, D, C);
+}
+
+////// LSU update ///////
+module lsuUpdate {
+  //input: link
+  //output: lsu
+  table< <Node:UDPAddress, Src:UDPAddress, Dest:UDPAddress, Cost:int, Seq:int>
+    ,keys<Node,Src,Dest>, 20 > lsu;
+  event<Node:UDPAddress, UDPAddress, UDPAddress,int,int> eLSU;
+  on periodic(Seq, 3), link(@X,Y,C) => insert lsu(@X,X,Y,C,Seq);
+  on periodic(2), link(X, Neighbor, _), lsu(X, From, To, C, Seq)
+    => eLSU(@Neighbor, From, To, C, Seq);
+
+  on eLSU(@N, From, To, C, Seq), ! lsu(@N, From, To, _, _)
+    => insert lsu(@N, From, To, C, Seq);
+
+  on eLSU(@N, From, To, C, Seq), lsu(@N, From, To, _, Seq2), Seq > Seq2 
+    => insert lsu(@N, From, To, C, Seq);
+}
+
+////// shortest path /////////
+module pathVector {
+  //input: lsu
+  //output: bestPath
+  view<UDPAddress, Src:UDPAddress, Dest:UDPAddress,Cost:int, Path:Vector<UDPAddress> > path;
+  view<Node:UDPAddress, Src:UDPAddress, Dest:UDPAddress,int, Vector<UDPAddress> > bestPath;
+  path(N,X,Y,C,[X]+[Y]):- lsu(N,X,Y,C,_);
+  path(N,X,Z,C1+C2, [X]+P) :- lsu(N,X,Y,C1,_), bestPath(N,Y,Z,C2,P), !P.find(X);
+  bestPath(N,X,Y,min<C>,P) :- path(N,X,Y,C,P), groupBy(N,X,Y);
+}
+//debugging
+//on insert lsu(@X,Y,Z,C,Seq) => print("insert lsu",X,Y,Z,C,Seq);
+//print("===path",X,Y,Z,C,P) :- path(X,Y,Z,C,P) ;
+//print("==lsu",X,Y,Z,C,Seq) :- lsu(X,Y,Z,C,Seq) ;
+on periodic(5) => dump(bestPath);
+on periodic(5) => dump(path);
+on periodic(5) => dump(nodelist);
+//on periodic(5) => dump(lsu);
+//on eLSU(@X,Y,Z,C,Seq) => print("eLSU",X,Y,Z,C,Seq);
+
+

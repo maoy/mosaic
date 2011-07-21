@@ -1,0 +1,22 @@
+module DistanceVector {
+  //input:link;
+  //output:bestPath;
+  table< <Src:String, Dest:String, Cost:Integer>, keys<Src,Dest> > link;
+  view<SrcNode:String, DestNode:String, Cost:Integer, NextHop:String> path;
+  view<Src:String, Dest:String, Cost:Integer, NextHop:String > bestPath;
+  path(X,Y,C,Y) :- link(X,Y,C);
+  path( X,Y,C1+C2, Z ) :- link(X,Z,C1), bestPath(Z,Y,C2,_), X!=Y;
+  bestPath(X, Y, min<C>, N) :- path(X, Y, C, N), groupBy(X,Y);
+}
+
+on periodic(3)  => dump(bestPath);
+
+link("A","B",1);
+link("B","C",1);
+link("B","D",1);
+
+on periodic(1,1,1) => insert link("D","C",1);
+on periodic(2, 1, 4) => delete link("B","C",1);
+
+print("path", X,Y,C,P) :- path(X,Y,C,P);
+print("bestpath", X,Y,C,P) :- bestPath(X,Y,C,P);

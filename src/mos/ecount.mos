@@ -1,0 +1,13 @@
+/* Event based Counter test */
+const int64_t MAX = 50000000L;
+event< int64_t, PosixTime > counter;
+
+on periodic(1,1,0) => counter(1, PosixTime::now() );
+
+on counter(X, t) => counter(X+1, t);
+
+on counter(MAX, t) => 
+  print("count to X", MAX, "took", PosixTime::now() - t);
+
+on counter(MAX+1, _) => exit(0);
+

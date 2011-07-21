@@ -1,0 +1,31 @@
+/*
+  Note that different from ecount, the `counter` view maintains all counted tuples
+ */
+table< <int,long>, keys<0,1> > limits;
+view< int,long > counter;
+view<string,int,PosixTime> stat;
+
+const string const_start = "start";
+
+stat(const_start, N+1, PosixTime::now() ) :- stat("stop", N, _);
+stat("stop",   N, PosixTime::now() ) :- counter(N,MAX), limits(N,MAX);
+counter(N,0L)   :- stat("start", N, _), limits(N,_);
+counter(N,I+1) :- counter(N,I), !limits(N,I);
+print(N, "counted to", MAX, START,STOP-START) :- 
+     stat("start", N, START), 
+     stat("stop", N, STOP), 
+     limits(N, MAX),
+     counter(N,MAX);
+print("stat", X,Y,Z) :- stat(X,Y,Z);
+//print("counter",X,Y) :- counter(X,Y);
+
+stat("start", 1, PosixTime::now() );
+
+limits(1, 100);
+limits(2, 1000);
+limits(3, 5000);
+limits(4, 10000);
+limits(5, 50000);
+limits(6, 100000);
+limits(7, 500000);
+

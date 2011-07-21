@@ -1,0 +1,56 @@
+const UDPAddress landmark = ::UDPAddress("127.0.0.1",1234);
+
+table< <Me:UDPAddress, Addr:UDPAddress, ID:int>, keys<Me> > succ;
+
+table< <Me:UDPAddress, ID:int>, keys<Me> > id;
+event<Me:UDPAddress, NewAddr:UDPAddress, NewID:int> join;
+event<Me:UDPAddress, NewAddr:UDPAddress, NewID:int, SuccAddr:UDPAddress, SuccID:int> update;
+
+/*system initialization
+use UDP port number as node ID at time 0; 
+myAddr is a system variable for the current
+UDPAddress of the node */
+on periodic(1,1,0) => insert id(::myAddr, ::myAddr._port ); 
+//If I am the landmark myself, point my successor to myself
+on insert id(@Me, ID), landmark==Me => insert succ(Me, Me, ID);
+//if I'm not a landmark, send join request to the landmark
+on insert id(@Me, ID), landmark!=Me => join(@landmark, Me, ID);
+
+//handling join request: 
+//case 1 where the node is the right place to insert
+on join(@Me, NewAddr, NewID),
+  succ(@Me, SuccAddr, SuccID), id(@Me, MyID),
+  (MyID < SuccID) ? (MyID <= NewID && NewID < SuccID): (MyID<=NewID || NewID<SuccID)
+ => update(@Me, NewAddr, NewID, SuccAddr, SuccID);
+
+//handling join request: case 2 where the node is not the right place, in
+//which case we forward the join request to the next node in the ring.
+on join(@Me, NewAddr, NewID),
+  succ(@Me, SuccAddr, SuccID), id(@Me, MyID),
+  !((MyID < SuccID) ? (MyID <= NewID && NewID < SuccID): (MyID<=NewID || NewID<SuccID ))
+  => join(@SuccAddr, NewAddr, NewID);
+
+on update(@Me, NewAddr, NewID, SuccAddr, _) => insert succ(@Me, NewAddr, NewID);
+on update(@Me, NewAddr, NewID, SuccAddr, SuccID) => insert succ(@NewAddr, SuccAddr, SuccID);
+
+/*
+
+on join(@Me, NewAddr, NewID) {
+  succ(@Me, SuccAddr, SuccID), id(@Me, MyID) {
+    if ((MyID < SuccID) ? (MyID <= NewID && NewID < SuccID): (SuccID<=NewID || NewID<MyID)) {
+       insert succ(@Me, NewAddr, NewID);
+       insert pred(@SuccAddr, NewAddr, NewID);
+       insert succ(@NewAddr, SuccAddr, SuccID);
+       insert pred(@NewAddr, Me, MyID);
+    }
+    else
+      emit join(@SuccAddr, NewAddr, NewID);
+  }
+}
+
+succ(Me, AID, SuccAddr) :- id(Me, MyID), id(SuccAddr, AID), ORDERBY AID-MyID, LIMIT 1;
+*/
+
+//debug info
+on join(@Me, NewAddr, NewID) => print("join request", NewAddr, NewID);
+on insert succ(@Me, Addr, ID) => print("successor:", Me, Addr, ID);

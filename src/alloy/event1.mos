@@ -1,0 +1,6 @@
+event<Loc:UDPAddress,X:int,Y:int> eventA;
+event<Loc:UDPAddress,X:int,Y:int> eventB;
+event<Loc:UDPAddress> initEvent;
+on initEvent(Me) => eventA(Me, 1,1);
+on eventA(Me, X, Y), X!=Y => eventB(Me, X, Y);
+//on eventB(Me, X, Y) => eventB(Me, X, Y);

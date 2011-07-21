@@ -1,0 +1,17 @@
+//#include "test_link.mh"
+
+module DistanceVector {
+  //input:link;
+  //output:bestPath;
+  table< <Src:string, Dest:string, Cost:int>, keys<Src,Dest> > link;
+  view<SrcNode:string, DestNode:string, Cost:int, NextHop:string> path;
+  view<Src:string, Dest:string, Cost:int, NextHop:string > bestPath;
+  path(X,Y,C,Y) :- link(X,Y,C);
+  path(X,Y,C1+C2,Z) :- link(X,Z,C1), bestPath(Z,Y,C2,_), X!=Y;
+  bestPath(X, Y, min<C>, N) :- path(X, Y, C, N), groupBy(X,Y);
+}
+
+on periodic(1,1,0), bestPath("n0","n49", C, N) => print("n0->n49 via",N,"for",C);
+//on periodic(1,1,0) => dump(bestPath);
+on periodic(1,1,0) => exit(0);
+

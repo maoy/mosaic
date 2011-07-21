@@ -1,0 +1,46 @@
+module bestpath {
+  //input:link;
+  //output:bestPath;
+  table< <Src:String, Dest:String, Cost:Integer>, keys<Src,Dest> > link;
+
+  view<SrcNode:String, DestNode:String, Cost:Integer, Path:Vector<String> > path;
+  view<Src:String, Dest:String, Cost:Integer, Vector<String> > bestPath;
+
+  view<Src:String, Dest:String, Integer> pathCount;
+  pathCount(X,Y,count<*>) :- path(X,Y,C,P), groupBy(X,Y);
+  /*on periodic(10), path(X,Y,C, P), groupBy(X,Y)
+    => insert pathCount(X,Y,count<*>);
+  */
+  print("count",X,Y,C) :- pathCount(X,Y,C);
+  
+  path(X,Y,C,[X]+[Y]) :- link(X,Y,C);
+  //print("link", X, Y) :- link(X,Y,C);
+  path( X,Y,C1+C2, [X]+P ) :- link(X,Z,C1), bestPath(Z,Y,C2,P),
+                          !P.find(X);
+  bestPath(X, Y, min<C>, P) :- path(X, Y, C, P),groupBy(X,Y);
+  print("path", X,Y,C,P) :- path(X,Y,C,P);
+}
+
+on periodic(3)  => dump(bestPath);
+
+link("A","B",1);
+link("A","C",1);
+link("B","C",1);
+link("C","D",1);
+//link("D","A",1);
+//link("D","B",1);
+
+on periodic(2, 1, 1) => delete link("B","C",1);
+on periodic(2, 1, 2) => delete link("C","D",1);
+
+/*on insert path(_,_,_,_),
+  path(X,Y,_,P), groupBy(X,Y) => print("count", count<P>);
+*/
+/*
+path = SELECT Src,Dest, Cost, [Src]+[Dest] FROM link
+UNION
+  SELECT link.From, link.To, link.Cost + bestPath.Cost, [link.From] + P
+  FROM link, bestPath WHERE link.To==bestPath.From and !P.find(X);
+
+bestPath = SELECT X,Y,C,P FROM path GROUPBY X,Y ORDERBY C TOP 1;
+*/

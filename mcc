@@ -1,0 +1,98 @@
+#!/usr/bin/python
+
+# $Id: mcc 198 2009-04-14 18:42:01Z maoy $
+
+import os, sys, getopt
+
+def cmake_parse(fn):
+    result = {}
+    for line in open(fn):
+        if line[0] != "#" and line[0]!="/":
+            x = line.strip().split(':')
+            if len(x)==2:
+                result[x[0]]=x[1]
+    return result
+
+def cmake_getattr(d, name, attr):
+    (a,v) = d[name].split('=')
+    if a==attr:
+        if attr=='STRING':
+            # strip out the 'quote'
+            return v[1:-1]
+        return v
+    else:
+        return None
+
+def exec_cmd(cmd, retv = 0):
+    ret = os.system(cmd)
+    if ret!=0: 
+        if retv==0: sys.exit(ret)
+        sys.exit(retv)
+    
+def usage():
+    print "mcc [-t build|release] mosfile.mos"
+def main():
+    if os.environ.has_key('MOSAIC_HOME'):
+        mosaic_home = os.environ['MOSAIC_HOME']
+    else:
+        mosaic_home = os.environ['HOME']+'/mosaic'
+    mosaicc = mosaic_home + '/build/mosaicc'
+
+    options = "t:"
+    try:
+        opts,args = getopt.getopt(sys.argv[1:], options)
+    except getopt.GetoptError:
+        print "Unknown options"
+        usage()
+        sys.exit(1)
+    #set default option values
+    target = "build"
+    for o,a in opts:
+        if o == '-t' and a in ["build","release"]:
+            target = a
+        else:
+            print 'Unknown options'
+            usage()
+            sys.exit(1)
+    
+    if len(args)!=1:
+        print "no mos file given"
+        usage()
+        sys.exit(1)
+
+    full_name = args[0]
+    module_name = os.path.splitext(full_name)[0]
+    #build_dir = 'build'
+    build_dir = target
+    os.system("mkdir -p %s" %(build_dir,) )
+    
+    print "Compiling", full_name
+    # pre-processing
+    cmd = "cpp %s > %s/%s.mpp" %(full_name, build_dir,module_name)
+    exec_cmd(cmd,1)
+    # compiling to C++ code
+    cmd  = "%s %s/%s.mpp > %s/%s.hpp" % \
+        (mosaicc, build_dir, module_name,build_dir, module_name)
+    exec_cmd(cmd,2)
+    cmd = "cp -f %s/src/lib/main.cpp %s/" %( mosaic_home, build_dir)
+    exec_cmd(cmd)
+    cmd = "cp -f %s/%s.hpp %s/gen.hpp" %( build_dir, module_name, build_dir)
+    exec_cmd(cmd)
+    # extracting g++ compile options and library information from CMakeCache
+    d = cmake_parse('%s/%s/CMakeCache.txt'%(mosaic_home,build_dir) )
+    boost_include = cmake_getattr(d, 'Boost_INCLUDE_DIR','PATH')
+    boehmgc_include = cmake_getattr(d, 'BOEHMGC_INCLUDE_DIR','PATH')
+    gc_library = cmake_getattr(d, 'GC_LIBRARY','FILEPATH')
+    boost_system = cmake_getattr(d, 'Boost_SYSTEM_LIBRARY','FILEPATH')
+    cxx_flags = cmake_getattr(d, 'CMAKE_CXX_FLAGS','STRING')
+    cxx_compiler = cmake_getattr(d,'CMAKE_CXX_COMPILER','FILEPATH')
+    includes = "-I %s/src -I %s -I %s" %(mosaic_home, boost_include, boehmgc_include)
+    libs = "-L %s/%s/lib -lmoslib %s %s -lpthread" % (mosaic_home, build_dir, boost_system, gc_library)
+    # run g++ to get the final binary code
+    cmd = "%s %s %s %s/main.cpp -o %s/%s.exe %s" \
+        %(cxx_compiler,cxx_flags,includes, build_dir, build_dir,module_name, libs)
+    print cmd
+    exec_cmd(cmd)
+
+main()
+

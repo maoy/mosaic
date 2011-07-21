@@ -1,0 +1,20 @@
+module find_bad_routes {
+  //input:rt;
+  //output:goodRoute,badRoute;
+  table< <Router:string,Dest:string, NextHop:string>, keys<Router,Dest> > rt;
+  view<From:string, To:string, Path:Vector<string> > goodRoute;
+  view<From:string, To:string, Next:string > badRoute;
+
+  goodRoute(From,To,[From]+[To]) :- rt(From,To,To);
+  goodRoute(From,To,[From]+Path) :- rt(From, To, Next), goodRoute(Next,To,Path), Next!=To, ! Path.find(From);
+  badRoute(From,To, Next) :- rt(From,To,Next), ! goodRoute(From,To,_);
+  badRoute(From,From, Next) :- rt(From,From,Next);
+}
+
+on periodic(1,1,0)  => dump(goodRoute);
+on periodic(1,1,0)  => dump(badRoute);
+
+rt("A","B","B");
+rt("B","A","A");
+rt("A","C","B");
+rt("B","C","A");

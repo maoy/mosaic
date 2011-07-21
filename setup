@@ -1,0 +1,11 @@
+#!/bin/bash
+#rm -rf build
+mkdir -p build
+echo "erasing all in release"
+rm -rf release
+mkdir -p release
+cd build
+CXXFLAGS="-g -pg -O2 -Wall -pipe" cmake ../src
+cd ../release
+CXXFLAGS="-O3 -Wall -pipe" cmake ../src
+#CXXFLAGS="-O3 -static -Wall -pipe" cmake ../src

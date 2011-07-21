@@ -1,0 +1,15 @@
+event<Src:UDPAddress, Dest:UDPAddress> ping;
+event<Src:UDPAddress, Dest:UDPAddress, TimeDuration> ping_finished;
+event<Src:UDPAddress, Dest:UDPAddress, PosixTime> pong;
+
+on periodic(1,1,0), Addr = ::myAddr 
+   => ping(@Addr, Addr );
+
+on ping(@Src, Dest) => pong(@Dest, Src, PosixTime::now() );
+
+on pong(@Dest, Src, T) => ping_finished(@Src, Dest, PosixTime::now()-T);
+
+on ping_finished(Src,Dest,T) => print("ping finished", Src,Dest,T);
+
+on periodic(1,1,1) => exit(0);
+

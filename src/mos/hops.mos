@@ -1,0 +1,11 @@
+//filename: hops.mos
+table< <Src:string, Dest:string, Cost:int>, keys<Src,Dest> > link; 
+view<Src:string, Dest:string> hop2neighbor;
+hop2neighbor(S,D) :- link(S,Z,_), link(Z,D,_), S!=D;
+view<Src:string, Dest:string> hop1or2;
+hop1or2(S,D) :- link(S,D,_);
+hop1or2(S,D) :- hop2neighbor(S,D);
+link("A","B",1);
+link("B","C",1);
+link("C","A",1);
+print("in view hop1or2:",S,D) :- hop1or2(S,D);

@@ -1,0 +1,12 @@
+/* ping pong example */
+
+const UDPAddress addr = ::UDPAddress("127.0.0.1", 1234);
+
+event< UDPAddress, UDPAddress, int > ping;
+event< UDPAddress, UDPAddress, int > pong;
+
+on periodic(1,1,0) => ping(addr, addr, 0);
+on ping(Src, Dest,  N) => pong(@Dest, Src, N);
+on pong(Src, Dest, N) => ping(@Dest, Src, N+1);
+ 
+on ping(_,_,N), N%1000==0 => print(N);

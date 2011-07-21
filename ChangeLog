@@ -1,0 +1,13 @@
+Release 0.2.1
+	* bug fix in type checking
+	* legal notice and license
+Release 0.2
+	* view and table separation;
+	* basic module concept;
+	* read facts from csv file;
+	* preliminary type checking;
+	* use include("cppfile.hpp"); to embed C++ files
+Release 0.1
+	* first release with compiler and library available. See examples
+	in src/mos directory
+
